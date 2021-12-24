@@ -2,8 +2,10 @@ Main-Class: edu.mit.csail.sdg.alloy4whole.Alloy
 
 -buildpath: \
 	org.alloytools.alloy.application,\
-    org.alloytools.alloy.core,\
+	org.alloytools.alloy.core,\
 	org.alloytools.alloy.extra,\
+	org.alloytools.alloy.lsp
+
 
 -sources: false
 
@@ -11,9 +13,15 @@ Main-Class: edu.mit.csail.sdg.alloy4whole.Alloy
 	@${repo;org.alloytools.alloy.application}, \
 	@${repo;org.alloytools.alloy.core}, \
 	@${repo;org.alloytools.alloy.extra}, \
+    @${repo;org.alloytools.alloy.lsp}, \
 	@${repo;org.alloytools:pardinus.core}, \
 	@${repo;org.alloytools:pardinus.nativesat}, \
 	@${repo;org.sat4j.core}, \
 	@${repo;org.sat4j.maxsat}, \
 	@${repo;org.sat4j.pb}, \
+	@${repo;org.eclipse.lsp4j}, \
+    @${repo;org.eclipse.lsp4j.jsonrpc}, \
+    @${repo;com.google.gson}, \
+    @${repo;org.eclipse.equinox.common}, \
+    @${repo;org.apache.commons.io}, \
 	LICENSES
