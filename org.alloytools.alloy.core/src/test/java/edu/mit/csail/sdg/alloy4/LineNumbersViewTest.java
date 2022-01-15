@@ -17,6 +17,9 @@ public class LineNumbersViewTest {
 
     @Test
     public void some_font_always_set_after_construction() throws Exception {
+
+        if ( GraphicsEnvironment.isHeadless() ) {return;}
+
         LineNumbersView lineNumbersView;
 
         lineNumbersView = new LineNumbersView(dummyTextComponent, true, Font.MONOSPACED, 15);
@@ -47,6 +50,8 @@ public class LineNumbersViewTest {
 
     @Test
     public void antialias_set_correctly() throws Exception {
+
+        if ( GraphicsEnvironment.isHeadless() ) {return;}
 
         String originalOs = System.getProperty("os.name", "UNKNOWN");
         LineNumbersView lineNumbersView;
