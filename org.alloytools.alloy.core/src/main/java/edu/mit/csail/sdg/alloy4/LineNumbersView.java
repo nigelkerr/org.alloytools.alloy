@@ -13,6 +13,7 @@ import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.font.FontRenderContext;
+import java.util.Collections;
 import java.util.Objects;
 
 /**
@@ -20,10 +21,13 @@ import java.util.Objects;
  * An instance is used to populate the rowHeader property of a JScrollPane instance,
  * based on information and events from the JTextComponent instance supplied
  * at initialization.
- *
+ * <p>
  * Uses fontName and fontSize provided at initialization time, and as updated
  * by callers.  Follows the anti-aliasing policy that {@link OurAntiAlias} follows, which
  * is not tied to user preferences.
+ * <p>
+ * Makes a margin at least large enough for 3 digits, and can grow or shrink as needed.
+ * The current font is used to determine how wide the needed digits require.
  */
 
 public class LineNumbersView extends JComponent implements DocumentListener, CaretListener, ComponentListener {
@@ -39,14 +43,12 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
     private int fontSize;
     private Font font;
 
-    private int lastCaretLine = -1;
-
     public LineNumbersView(JTextComponent editor, boolean shouldDisplay, String fontName, int fontSize) {
         Objects.requireNonNull(editor, "Need a non-null JTextComponent for parameter editor");
         this.editor = editor;
         this.antiAlias = Util.onMac() || Util.onWindows();
 
-        if ( fontName != null && fontSize > 1 ) {
+        if (fontName != null && fontSize > 1) {
             this.fontName = fontName;
             this.fontSize = fontSize;
         } else {
@@ -56,18 +58,14 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
         font = new Font(fontName, Font.PLAIN, fontSize);
 
         this.lineNumbers = shouldDisplay;
-        if ( lineNumbers ) {
-            marginWidth = calculateMarginWidth();
+        if (lineNumbers) {
+            marginWidth = calculateMarginWidth(3);
             editor.getDocument().addDocumentListener(this);
             editor.addComponentListener(this);
             editor.addCaretListener(this);
         } else {
             marginWidth = 0;
         }
-    }
-
-    public int getLastCaretLine() {
-        return lastCaretLine;
     }
 
     public boolean isAntiAlias() {
@@ -108,51 +106,80 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
             int startOffset = editor.viewToModel(new Point(0, clip.y));
             int endOffset = editor.viewToModel(new Point(0, clip.y + clip.height));
 
+            // track the widest number we've seen ths paintComponent
+            int maxDigits = 0;
+            // also track the margin width at the start of this paintComponent
+            int startMarginWidth = getMarginWidth();
+
             while (startOffset <= endOffset) {
                 try {
-                    String lineNumber = getLineNumberString(startOffset);
-                    if (lineNumber != null) {
+                    int lineNumber = getLineNumber(startOffset);
+                    if (lineNumber > 0) {
                         int x = getInsets().left + 2;
                         int y = getOffsetY(startOffset);
 
                         g.setFont(font);
                         Color color = Color.BLACK;
-                        if ( isCurrentLine(startOffset)) {
+                        if (isCurrentLine(startOffset)) {
                             color = Color.red;
-                            lastCaretLine = getLineNumber(startOffset);
                         }
                         g.setColor(color);
-                        g.drawString(lineNumber, x, y);
+                        final String formattedLineNumber = formatLineNumber(lineNumber);
+                        if (formattedLineNumber.length() > maxDigits) {
+                            maxDigits = formattedLineNumber.length();
+                        }
+                        g.drawString(formattedLineNumber, x, y);
                     }
                     startOffset = Utilities.getRowEnd(editor, startOffset) + 1;
                 } catch (BadLocationException e) {
                     e.printStackTrace();
                 }
             }
+
+            // if the margin width changed after updateMarginWidth()
+            // then we update our size and request repainting.
+            updateMarginWidth(maxDigits);
+            if (startMarginWidth != getMarginWidth()) {
+                updateSizeAndDocumentChanged();
+            }
         }
     }
 
-    /** update the font we will use to draw numbers from the provided editor component.  */
+    private void updateSizeAndDocumentChanged() {
+        updateSize();
+        documentChanged();
+    }
+
+    private void updateMarginWidth(int maxDigits) {
+        marginWidth = calculateMarginWidth(Math.max(maxDigits, 3));
+    }
+
+    /**
+     * update the font we will use to draw numbers from the provided editor component.
+     */
     private Font getUpdatedFont() {
-        if ( fontName.equals(font.getFontName()) || fontSize != font.getSize()) {
+        if (fontName.equals(font.getFontName()) || fontSize != font.getSize()) {
             return new Font(fontName, Font.PLAIN, fontSize);
         } else {
             return font;
         }
     }
 
-    private int getLineNumber(int offset) {
+    private int getLineIndex(int offset) {
         Element root = editor.getDocument().getDefaultRootElement();
         return root.getElementIndex(offset);
     }
 
-    private String getLineNumberString(int offset) {
-        int index = getLineNumber(offset);
+    private int getLineNumber(int offset) {
+        int index = getLineIndex(offset);
         Element root = editor.getDocument().getDefaultRootElement();
         Element line = root.getElement(index);
 
-        // how long are alloy specifications often?
-        return line.getStartOffset() == offset ? String.format("%3d", index + 1) : null;
+        return line.getStartOffset() == offset ? index + 1 : 0;
+    }
+
+    private String formatLineNumber(int lineNumber) {
+        return String.format("%3d", lineNumber);
     }
 
     private int getOffsetY(int offset) throws BadLocationException {
@@ -170,9 +197,7 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
     }
 
     private void documentChanged() {
-        SwingUtilities.invokeLater(() -> {
-            repaint();
-        });
+        SwingUtilities.invokeLater(this::repaint);
     }
 
     private void updateSize() {
@@ -198,26 +223,22 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
 
     @Override
     public void caretUpdate(CaretEvent e) {
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
     @Override
     public void componentResized(ComponentEvent e) {
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
     @Override
     public void componentMoved(ComponentEvent e) {
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
     @Override
     public void componentShown(ComponentEvent e) {
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
     @Override
@@ -228,14 +249,13 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
         this.fontName = fontName;
         this.fontSize = fontSize;
         font = getUpdatedFont();
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
     public void enableLineNumbers(boolean flag) {
         lineNumbers = flag;
         if (lineNumbers) {
-            marginWidth = calculateMarginWidth();
+            marginWidth = calculateMarginWidth(3);
             editor.getDocument().addDocumentListener(this);
             editor.addComponentListener(this);
             editor.addCaretListener(this);
@@ -243,23 +263,23 @@ public class LineNumbersView extends JComponent implements DocumentListener, Car
             marginWidth = 0;
         }
         font = getUpdatedFont();
-        updateSize();
-        documentChanged();
+        updateSizeAndDocumentChanged();
     }
 
-    /** produce a width in pixels for this margin when it is to be drawn.
-     * make an effort to have our page-number margin only wide enough for three numerals, no wider.
-     * This calculation is based on trial and error ("width of '000' in current font plus 10%"),
-     * and if there's better way to decide this margin width by all means.
-     * */
-    public int calculateMarginWidth() {
-        if ( font != null ) {
+    /**
+     * produce a margin width based on a number of digits to display.
+     */
+    private int calculateMarginWidth(int digits) {
+        if (font != null) {
+            String toFit = String.join("", Collections.nCopies(digits, "0"));
             return (int) Math.ceil(font
-                    .getStringBounds("000", new FontRenderContext(null, antiAlias, false))
-                    .getWidth() * 1.1);
+                    .getStringBounds(toFit, new FontRenderContext(null, antiAlias, false))
+                    .getWidth() * 1.2);
         } else {
-            return fontSize * 2;
+            return fontSize * digits;
         }
 
     }
+
+
 }

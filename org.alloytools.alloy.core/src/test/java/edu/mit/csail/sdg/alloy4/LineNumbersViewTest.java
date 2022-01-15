@@ -76,23 +76,9 @@ public class LineNumbersViewTest {
         try {
             LineNumbersView lineNumbersView = new LineNumbersView(null, true, "Monospaced", 15);
             fail("should have not constructed with null editor parameter");
-        } catch (Throwable t) {
+        } catch (NullPointerException t) {
 
         }
-    }
-
-    @Test
-    public void margin_width_calculated_reasonably() throws Exception {
-        LineNumbersView lineNumbersView = new LineNumbersView(dummyTextComponent, true, "Monospaced", 15);
-        Font monospaced15Font = new Font("Monospaced", Font.PLAIN, 15);
-        int expected = (int)Math.ceil(monospaced15Font
-                .getStringBounds("000", new FontRenderContext(null, true, false))
-                .getWidth() * 1.1);
-
-        assertEquals(
-            expected,
-                lineNumbersView.calculateMarginWidth()
-        );
     }
 
 }
