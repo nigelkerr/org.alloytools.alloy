@@ -5,7 +5,6 @@ import org.junit.Test;
 import javax.swing.border.EmptyBorder;
 import javax.swing.text.JTextComponent;
 import java.awt.*;
-import java.awt.font.FontRenderContext;
 
 import static org.junit.Assert.*;
 
