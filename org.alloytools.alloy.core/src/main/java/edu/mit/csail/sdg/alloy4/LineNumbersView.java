@@ -15,6 +15,10 @@ import java.awt.event.ComponentListener;
 import java.awt.font.FontRenderContext;
 import java.util.Collections;
 import java.util.Objects;
+/*
+ * Modified 2022-01 from code from https://github.com/hblok/rememberjava/blob/master/_includes/src/com/rememberjava/ui/RowHeaderViewLineNumbers.java itself
+ * under the GPL 3.
+ */
 
 /**
  * Provides display of line-numbers to a provided JTextComponent.
